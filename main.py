@@ -157,8 +157,7 @@ def send_alert(channel_name, channel_config, title, subtitle, block_list, total_
         try:
             feishu_config = channel_config['config']
             feishu = FeiShu(feishu_config['token'], feishu_config['secret'])
-            msg = feishu.format_report(block_list, total_attack_count)
-            req = feishu.send_message(title, subtitle, msg)
+            req = feishu.send_message(title, subtitle, block_list, total_attack_count)
             if req.status_code != 200:
                 logging.error(f"向飞书渠道 [{channel_name}] 发送告警失败: {req.text}")
             else:
