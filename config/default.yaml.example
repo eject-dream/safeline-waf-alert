@@ -1,0 +1,32 @@
+waf:
+  - name: "测试WAF"
+    address: "https://192.168.1.1:9443"
+    token: "your-token"
+    alert: True
+    sendto:
+      - "fs_X群"
+      - "fs_Y群"
+      - "dd_X群"
+  - name: "WAF"
+    address: "https://192.168.1.2:9443"
+    token: "your-token"
+    alert: True
+    sendto:
+      - "dd_X群"
+
+# 告警发送渠道,每个渠道名字必须唯一,否则会爆炸
+alert_channels:
+  feishu:
+    - name: "fs_X群"
+      token: "token"
+      secret: "secret"
+    - name: "fs_Y群"
+      token: "token"
+      secret: "secret"
+  dingtalk:
+    - name: "dd_X群"
+      token: "token"
+      secret: "secret"
+    - name: "dd_Y群"
+      token: "token"
+      secret: "secret"

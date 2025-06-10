@@ -1,0 +1,22 @@
+MODULE_DICT = {
+    'blacklist': '黑名单',
+    'm_asp_code_injection': 'ASP 代码注入检测',
+    'm_cmd_injection': '命令注入检测',
+    'm_csrf': 'CSRF 检测',
+    'm_file_include': '文件包含检测',
+    'm_file_upload': '文件上传检测',
+    'm_http': '畸形 HTTP 协议检测',
+    'm_java_unserialize': 'JAVA 反序列化检测',
+    'm_java': 'JAVA 代码注入检测',
+    'm_php_code_injection': 'PHP 代码注入检测',
+    'm_php_unserialize': 'PHP 反序列化检测',
+    'm_response': '服务器响应检测',
+    'm_rule': '加强规则',
+    'm_scanner': '机器人检测',
+    'm_sqli': 'SQL 注入检测',
+    'm_ssrf': 'SSRF 检测',
+    'm_ssti': '模板注入检测',
+    'm_timeout': '检测超时',
+    'm_xss': 'XSS 检测',
+    'whitelist': '白名单'
+}
