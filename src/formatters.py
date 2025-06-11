@@ -2,6 +2,7 @@ from collections import Counter
 from src.library import is_not_ip_address
 from src.waf_module_dict import MODULE_DICT
 
+
 def format_report_for_feishu(block_list, total_attack_count):
     """
     将攻击报告格式化为飞书Markdown格式
@@ -27,3 +28,10 @@ def format_report_for_feishu(block_list, total_attack_count):
             msg += f'\n- 白名单原因：\n{whitelist_reason_text}'
     msg += f'\n---\n**总阻断次数：{total_attack_count}**'
     return msg
+
+# 经测试，钉钉的Markdown格式与飞书的Markdown格式相同，因此可以共用
+def format_report_for_dingtalk(block_list, total_attack_count):
+    """
+    太好啦，钉钉的Markdown格式与飞书的Markdown格式相同，因此可以共用（偷懒真好，bushi）
+    """
+    return format_report_for_feishu(block_list, total_attack_count)

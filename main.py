@@ -1,6 +1,7 @@
 import argparse
 import yaml
 from src.feishu import FeiShu
+from src.dingtalk import DingTalk
 import urllib3
 import urllib.parse
 import requests
@@ -167,8 +168,18 @@ def send_alert(channel_name, channel_config, title, subtitle, block_list, total_
         except Exception as e:
             logging.error(f"发送飞书消息时发生未知错误: {e}")
     elif channel_type == 'dingtalk':
-        # TODO: 实现钉钉告警
-        logging.warning(f"钉钉渠道 [{channel_name}] 的告警功能尚未实现")
+        try:
+            dingtalk_config = channel_config['config']
+            dingtalk = DingTalk(dingtalk_config['token'], dingtalk_config['secret'])
+            req = dingtalk.send_message(title, subtitle, block_list, total_attack_count)
+            if req.status_code != 200:
+                logging.error(f"向钉钉渠道 [{channel_name}] 发送告警失败: {req.text}")
+            else:
+                logging.info(f"向钉钉渠道 [{channel_name}] 告警发送成功")
+        except KeyError as e:
+            logging.error(f"钉钉渠道 [{channel_name}] 配置错误，缺少键: {e}")
+        except Exception as e:
+            logging.error(f"发送钉钉消息时发生未知错误: {e}")
     else:
         logging.warning(f"不支持的告警渠道类型: {channel_type}")
 
