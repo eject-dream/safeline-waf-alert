@@ -6,6 +6,10 @@ import urllib3
 import urllib.parse
 import requests
 import logging
+import threading
+import time
+from src.syslog_handler import start_syslog_server
+from src.spike_detector import SpikeDetector
 
 from datetime import datetime, timedelta
 
@@ -31,6 +35,8 @@ def get_command_line_args():
     parser.add_argument('-c', '--config', type=str, default='config/default.yaml',
                         help='配置文件路径 (default: config/default.yaml)')
     parser.add_argument('--debug', action='store_true', help='调试模式')
+    # spike detection 模式
+    parser.add_argument('--spike', action='store_true', help='启用实时 syslog 波动检测告警模式')
     args = parser.parse_args()
 
     # 检查是否同时传入了 -H 和 -M 参数
@@ -142,7 +148,7 @@ def get_alert_channel(config, channel_name):
                 }
     return None
 
-def send_alert(channel_name, channel_config, title, subtitle, block_list, total_attack_count):
+def send_alert(channel_name, channel_config, title, subtitle, block_list, total_attack_count, ignore_rule=None, show_attack_ip_top=0):
     """
     根据渠道类型发送格式化的告警信息。
 
@@ -152,13 +158,14 @@ def send_alert(channel_name, channel_config, title, subtitle, block_list, total_
     :param subtitle: 消息副标题
     :param block_list: 攻击记录列表
     :param total_attack_count: 总攻击次数
+    :param ignore_rule: 忽略的规则名列表
     """
     channel_type = channel_config.get('type')
     if channel_type == 'feishu':
         try:
             feishu_config = channel_config['config']
             feishu = FeiShu(feishu_config['token'], feishu_config['secret'])
-            req = feishu.send_message(title, subtitle, block_list, total_attack_count)
+            req = feishu.send_message(title, subtitle, block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
             if req.status_code != 200:
                 logging.error(f"向飞书渠道 [{channel_name}] 发送告警失败: {req.text}")
             else:
@@ -171,7 +178,7 @@ def send_alert(channel_name, channel_config, title, subtitle, block_list, total_
         try:
             dingtalk_config = channel_config['config']
             dingtalk = DingTalk(dingtalk_config['token'], dingtalk_config['secret'])
-            req = dingtalk.send_message(title, subtitle, block_list, total_attack_count)
+            req = dingtalk.send_message(title, subtitle, block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
             if req.status_code != 200:
                 logging.error(f"向钉钉渠道 [{channel_name}] 发送告警失败: {req.text}")
             else:
@@ -183,9 +190,9 @@ def send_alert(channel_name, channel_config, title, subtitle, block_list, total_
     else:
         logging.warning(f"不支持的告警渠道类型: {channel_type}")
 
-def main():
+def report_mode():
     """
-    主函数，编排整个脚本的执行流程。
+    定时战报模式
     """
     args = get_command_line_args()
     log_level = logging.DEBUG if args.debug else logging.INFO
@@ -210,6 +217,9 @@ def main():
         block_list, total_attack_count = fetch_attack_records(waf.get("address"), waf.get("token"), start_time, end_time)
         logging.info(f"WAF [{waf_name}] 在指定时间内共发现 {total_attack_count} 次攻击。")
 
+        ignore_rule = waf.get('ignore_rule', [])
+        show_attack_ip_top = waf.get('show_attack_ip_top', 0)
+
         if total_attack_count > 0:
             title = f'{waf_name} 攻击战报'
             subtitle = f'{start_dt} 到 {end_dt}'
@@ -220,10 +230,73 @@ def main():
                     logging.warning(f"未在配置文件中找到名为 [{channel_name}] 的告警渠道配置")
                     continue
                 
-                send_alert(channel_name, channel_config, title, subtitle, block_list, total_attack_count)
+                send_alert(channel_name, channel_config, title, subtitle, block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
         else:
             logging.info(f"WAF [{waf_name}] 未发现攻击，无需发送战报。")
 
+
+def run_spike_detection(config, args):
+    """
+    运行实时波动检测
+    
+    :param config: 配置文件
+    :param args: 命令行参数
+    """
+    # 读取 spike_detection 配置
+    spike_cfg = config.get('spike_detection', {})
+    window_minutes = spike_cfg.get('window_minutes', 5)
+    min_events = spike_cfg.get('min_events', 10)
+    std_times = spike_cfg.get('std_times', 2)
+    # syslog 监听参数
+    listen_ip = config.get('syslog', {}).get('listen_ip', '0.0.0.0')
+    listen_port = config.get('syslog', {}).get('listen_port', 514)
+    # spike 检测器
+    detector = SpikeDetector(window_minutes, min_events, std_times)
+    # 读取 syslog.sendto 配置
+    syslog_sendto = config.get('syslog', {}).get('sendto', [])
+    ignore_rule = config.get('syslog', {}).get('ignore_rule', [])
+    show_attack_ip_top = config.get('syslog', {}).get('show_attack_ip_top', 0)
+    
+    def handle_log(parsed_json, raw_msg):
+        # 必须有 timestamp 字段
+        ts = parsed_json.get('timestamp')
+        if not ts:
+            return
+        detector.add_event(None, None, ts)
+    # 启动 syslog 监听线程
+    threading.Thread(target=start_syslog_server, args=(listen_ip, listen_port, handle_log), daemon=True).start()
+    logging.info(f"Spike 检测已启动，监听 {listen_ip}:{listen_port}")
+    check_interval = spike_cfg.get('check_interval', 60)
+    while True:
+        time.sleep(check_interval)
+        spikes = detector.check_spike()
+        for cur, mean, std in spikes:
+            waf_name = "全局"
+            title = f"[波动告警] {waf_name} 攻击激增"
+            subtitle = f"当前分钟攻击数: {cur}，均值: {mean:.2f}，标准差: {std:.2f}"
+            block_list = []  # 可扩展为样本日志
+            total_attack_count = cur
+            for channel_name in syslog_sendto:
+                channel_config = get_alert_channel(config, channel_name)
+                if channel_config is None:
+                    logging.warning(f"未在配置文件中找到名为 [{channel_name}] 的告警渠道配置")
+                    continue
+                send_alert(channel_name, channel_config, title, subtitle, block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
+
+def main():
+    """
+    主函数，编排整个脚本的执行流程。
+    """
+    args = get_command_line_args()
+    log_level = logging.DEBUG if args.debug else logging.INFO
+    logging.basicConfig(level=log_level, format='%(asctime)s - %(levelname)s - %(message)s')
+    config = load_config(args.config)
+    if not config:
+        return
+    if args.spike:
+        run_spike_detection(config, args)
+    else:
+        report_mode()
 
 if __name__ == "__main__":
     main()

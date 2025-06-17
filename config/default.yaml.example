@@ -3,16 +3,21 @@ waf:
     address: "https://192.168.1.1:9443"
     token: "your-token"
     alert: True
+    show_attack_ip_top: 5
     sendto:
       - "fs_X群"
       - "fs_Y群"
       - "dd_X群"
+    ignore_rule:
+      - "长亭社区恶意 IP 情报黑名单"
   - name: "WAF"
     address: "https://192.168.1.2:9443"
     token: "your-token"
     alert: True
+    show_attack_ip_top: 0
     sendto:
       - "dd_X群"
+    ignore_rule: []
 
 # 告警发送渠道,每个渠道名字必须唯一,否则会爆炸
 alert_channels:
@@ -30,3 +35,15 @@ alert_channels:
     - name: "dd_Y群"
       token: "token"
       secret: "secret"
+
+syslog:
+  listen_ip: "0.0.0.0"
+  listen_port: 514
+  sendto:
+    - "dd_X群"
+
+spike_detection:
+  window_minutes: 2        # 统计滑动窗口大小（分钟）
+  min_events: 10           # 激增判定时，当前分钟最少攻击数
+  std_times: 2             # 当前分钟攻击数 > 均值+N*标准差时告警
+  check_interval: 10       # 检查激增的秒数间隔

@@ -1,3 +1,7 @@
+# 感恩的心
+
+感谢雷池官方对本项目的支持，PY了好几天的专业版，不然syslog 真没法写
+
 # 槽
 
 官方的好用吗？
@@ -14,6 +18,7 @@
 -   **多渠道告警**：支持将报告发送到多个飞书群组。
 -   **灵活配置**：通过 `YAML` 文件管理所有 WAF 实例和告警渠道，易于扩展。
 -   **调试模式**：提供 `--debug` 选项，输出详细的执行日志，方便排查问题。
+-   **实时波动告警**：通过 `--spike` 选项，实时检测攻击波动，当检测到异常波动时，自动发送告警。
 
 ## 效果
 ### 飞书
@@ -52,9 +57,13 @@ waf:
     address: "https://192.168.1.1:9443" # WAF的管理地址
     token: "your-api-token-here" # 从WAF获取的API Token
     alert: true # 是否为该WAF实例发送告警
+    show_attack_ip_top: 5 # 显示攻击IP前几名, 为0的时候不显示
     sendto: # 告警渠道列表，对应下方 alert_channels 中定义的名称
       - "安全部-飞书群"
       - "研发部-飞书群"
+    ignore_rule:
+      - "长亭社区恶意 IP 情报黑名单" # 忽略的规则名称，规则名字一般是你自己写的
+      - "m_sqli" # 有些是模块，得去waf_module_dict.py 里找，比如这样，就是忽略SQL注入模块
 
 # 告警渠道配置
 alert_channels:
@@ -73,6 +82,20 @@ alert_channels:
     - name: "钉钉测试群"
       token: "your-dingtalk-bot-token"
       secret: "your-dingtalk-bot-secret"
+
+# syslog 配置
+syslog:
+  listen_ip: "0.0.0.0"
+  listen_port: 514
+  sendto:
+  - 钉钉测试群
+
+# 波动检测配置
+spike_detection:
+  window_minutes: 3        # 统计滑动窗口大小（分钟）
+  min_events: 10           # 激增判定时，当前分钟最少攻击数
+  std_times: 2             # 当前分钟攻击数 > 均值+N*标准差时告警
+  check_interval: 10       # 检查激增的秒数间隔
 ```
 
 ## 使用方法
@@ -86,6 +109,7 @@ alert_channels:
 -   `-M, --minute`：查询过去多少分钟的日志。此参数优先级高于 `--hour`。
 -   `-r, --round`：是否对时间进行取整。
 -   `-c, --config`：指定配置文件的路径（默认: `config/default.yaml`）。
+-   `--spike`：启动波动检测告警。
 -   `--debug`：开启调试模式，输出更详细的日志。
 
 ### 使用示例
@@ -110,11 +134,53 @@ alert_channels:
     python main.py -c config/my_config.yaml --debug
     ```
 
+-   **启动实时波动告警**:
+    ```bash
+    python main.py --spike
+    ```
+
+## 波动告警说明
+- **注意**：waf 的syslog 外发是付费功能！！！
+- **注意**：waf 的syslog 外发是付费功能！！！
+- **注意**：waf 的syslog 外发是付费功能！！！
+
+波动告警是基于waf 往syslog 服务器推送消息的，所以一旦使用--spike，会启动一个syslog监听线程
+
+告警配置有点抽象，所以搞点示例说明
+
+```yaml
+spike_detection:
+  window_minutes: 3        # 统计滑动窗口大小（分钟）
+  min_events: 10           # 激增判定时，当前分钟最少攻击数
+  std_times: 2             # 当前分钟攻击数 > 均值+N*标准差时告警
+  check_interval: 10       # 检查激增的秒数间隔
+```
+- 只要“当前1分钟的攻击数”大于“前2分钟的平均 + 2倍标准差”，并且当前分钟攻击数 ≥ 10，就会告警。
+- 每10秒检查一次
+
+|时间（分钟）|攻击数|
+|:---:|:---:|
+|第1分钟|12|
+|第2分钟|8|
+|第3分钟（当前）|35|
+
+- 前两分钟均值 = (12+8)/2 = 10
+- 前两分钟标准差 = sqrt(((12-10)^2 + (8-10)^2)/2) = sqrt((4+4)/2) = sqrt(4) = 2
+- 告警阈值 = 10 + 2*2 = 14
+- 当前分钟攻击数 = 35，且 ≥ 10，且 35 > 14，会触发告警。
+
+
+[官方文档 syslog](https://help.waf-ce.chaitin.cn/node/01973fc6-e276-7c80-85ec-70b5d5863d60)
+
 ## 待办事项 (TODO)
 
 -   [X] 实现钉钉告警渠道的发送逻辑。
--   [X] 使用UV进行项目管理.
--   [ ] 基于syslog实现实时波动告警。
+-   [X] 使用UV进行项目管理。
+-   [X] 添加show_attack_ip_top参数，用于显示攻击IP。
+-   [X] 添加ignore_rule参数，用于忽略某些规则。
+-   [X] 基于syslog实现实时波动告警。
+-   [ ] 实现更强大的syslog 告警，告警内容参考截图。
+-   [ ] 波动告警联动黑名单实时封禁扫最high的IP。
 -   [ ] 添加多语言支持（重要但不紧急）。
 
 ~~- 实现微信告警渠道的发送逻辑。~~（我没有微信机器人，所以大概率不会写了吧，谁试试，看理论上编辑formatters.py，学format_report_for_dingtalk，复制一个，应该就可以了，然后再建一个wechat.py 用于发送告警）

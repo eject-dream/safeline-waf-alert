@@ -24,10 +24,10 @@ class DingTalk:
         return sign
 
     @retry(stop_max_attempt_number=3, wait_fixed=2000)
-    def send_message(self, title, subtitle, block_list, total_attack_count):
+    def send_message(self, title, subtitle, block_list, total_attack_count, ignore_rule=None, show_attack_ip_top=0):
         sign = self.__gen_sign()
         dingtalk_uri = f"https://oapi.dingtalk.com/robot/send?access_token={self.token}&timestamp={self.timestamp}&sign={sign}"
-        msg = format_report_for_dingtalk(block_list, total_attack_count)
+        msg = format_report_for_dingtalk(block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
         logging.debug(f"本次请求消息为: {msg}")
         data = {
             "msgtype": "markdown",

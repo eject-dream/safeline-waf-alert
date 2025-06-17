@@ -20,10 +20,10 @@ class FeiShu:
         return sign
 
     @retry(stop_max_attempt_number=3, wait_fixed=2000)
-    def send_message(self, title, subtitle, block_list, total_attack_count):
+    def send_message(self, title, subtitle, block_list, total_attack_count, ignore_rule=None, show_attack_ip_top=0):
         sign = self.__gen_sign()
         feishu_uri = f"https://open.feishu.cn/open-apis/bot/v2/hook/{self.token}"
-        msg = format_report_for_feishu(block_list, total_attack_count)
+        msg = format_report_for_feishu(block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
         data = {
             "timestamp": self.timestamp,
             "sign": sign,
