@@ -248,12 +248,11 @@ def report_mode():
             logging.info(f"WAF [{waf_name}] 未发现攻击，无需发送战报。")
 
 
-def run_spike_detection(config, args):
+def run_spike_detection(config):
     """
     运行实时波动检测
     
     :param config: 配置文件
-    :param args: 命令行参数
     """
     # 读取 spike_detection 配置
     spike_cfg = config.get('spike_detection', {})
@@ -307,7 +306,7 @@ def main():
     if not config:
         return
     if args.spike:
-        run_spike_detection(config, args)
+        run_spike_detection(config)
     else:
         report_mode()
 

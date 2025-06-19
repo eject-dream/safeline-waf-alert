@@ -15,7 +15,7 @@ class SpikeDetector:
         self.last_minute = None
         self.alerted = set()  # 避免重复告警 (minute)
 
-    def add_event(self, site_uuid, attack_type, event_time):
+    def add_event(self, event_time):
         minute = int(event_time // 60)
         now = int(time.time() // 60)
         with self.lock:
