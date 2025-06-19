@@ -83,6 +83,11 @@ alert_channels:
       token: "your-dingtalk-bot-token"
       secret: "your-dingtalk-bot-secret"
 
+  # 微信机器人列表
+  wechat:
+    - name: "微信测试群"
+      token: "your-wechat-bot-token"
+
 # syslog 配置
 syslog:
   listen_ip: "0.0.0.0"
@@ -175,12 +180,12 @@ spike_detection:
 ## 待办事项 (TODO)
 
 -   [X] 实现钉钉告警渠道的发送逻辑。
+-   [X] 实现微信告警渠道的发送逻辑。（注意作者没有企业微信，照着微信官方文档盲敲的，应该可以正常工作，但是没有测试）
 -   [X] 使用UV进行项目管理。
 -   [X] 添加show_attack_ip_top参数，用于显示攻击IP。
 -   [X] 添加ignore_rule参数，用于忽略某些规则。
 -   [X] 基于syslog实现实时波动告警。
 -   [ ] 实现更强大的syslog 告警，告警内容参考截图。
+-   [ ] 重构波动告警，或许会抛弃syslog，改用waf的api。
 -   [ ] 波动告警联动黑名单实时封禁扫最high的IP。
 -   [ ] 添加多语言支持（重要但不紧急）。
-
-~~- 实现微信告警渠道的发送逻辑。~~（我没有微信机器人，所以大概率不会写了吧，谁试试，看理论上编辑formatters.py，学format_report_for_dingtalk，复制一个，应该就可以了，然后再建一个wechat.py 用于发送告警）

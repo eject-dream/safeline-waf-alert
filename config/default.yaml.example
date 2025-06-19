@@ -35,6 +35,9 @@ alert_channels:
     - name: "dd_Y群"
       token: "token"
       secret: "secret"
+  wechat:
+    - name: "wx_X群"
+      token: "token"
 
 syslog:
   listen_ip: "0.0.0.0"

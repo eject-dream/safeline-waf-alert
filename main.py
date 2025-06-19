@@ -187,6 +187,19 @@ def send_alert(channel_name, channel_config, title, subtitle, block_list, total_
             logging.error(f"钉钉渠道 [{channel_name}] 配置错误，缺少键: {e}")
         except Exception as e:
             logging.error(f"发送钉钉消息时发生未知错误: {e}")
+    elif channel_type == 'wechat':
+        try:
+            wechat_config = channel_config['config']
+            wechat = WeChat(wechat_config['token'])
+            req = wechat.send_message(title, subtitle, block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
+            if req.status_code != 200:
+                logging.error(f"向微信渠道 [{channel_name}] 发送告警失败: {req.text}")
+            else:
+                logging.info(f"向微信渠道 [{channel_name}] 告警发送成功")
+        except KeyError as e:
+            logging.error(f"微信渠道 [{channel_name}] 配置错误，缺少键: {e}")
+        except Exception as e:
+            logging.error(f"发送微信消息时发生未知错误: {e}")
     else:
         logging.warning(f"不支持的告警渠道类型: {channel_type}")
 

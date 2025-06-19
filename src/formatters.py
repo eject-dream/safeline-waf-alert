@@ -54,3 +54,14 @@ def format_report_for_dingtalk(block_list, total_attack_count, ignore_rule=None,
     太好啦，钉钉的Markdown格式与飞书的Markdown格式相同，因此可以共用（偷懒真好，bushi）
     """
     return format_report_for_feishu(block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
+
+
+def format_report_for_wechat(block_list, total_attack_count, ignore_rule=None, show_attack_ip_top=0):
+    """
+    将攻击报告格式化为微信Markdown格式，注意作者没有企业微信，照着微信官方文档盲敲的
+    :param block_list: 攻击记录列表
+    :param total_attack_count: 总攻击次数
+    :param ignore_rule: 需要忽略的规则名列表（policy_name/module），可为 None
+    :param show_attack_ip_top: 需要显示的攻击 IP 个数，0 表示不显示
+    """
+    return format_report_for_feishu(block_list, total_attack_count, ignore_rule=ignore_rule, show_attack_ip_top=show_attack_ip_top)
